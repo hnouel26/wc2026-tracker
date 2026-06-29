@@ -28,9 +28,9 @@ body{background:var(--bg);color:var(--txt);font-family:'Barlow',sans-serif;min-h
 .cem{font-size:17px}
 .clb{color:rgba(255,255,255,.75);font-size:9px;text-transform:uppercase;letter-spacing:.8px}
 .cnm{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:900;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.7)}
-.bo{padding:16px 20px 48px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-#bw{position:relative;display:inline-block;min-width:1360px}
-#sv{position:absolute;inset:0;pointer-events:none;z-index:1}
+.bo{padding:16px 20px 48px;overflow:auto;-webkit-overflow-scrolling:touch}
+#bw{position:relative;display:inline-block;min-width:1360px;transform-origin:top left}
+#sv{position:absolute;top:0;left:0;pointer-events:none;z-index:1}
 #ml{position:relative;z-index:2;display:flex;align-items:flex-start}
 .rc{display:flex;flex-direction:column}
 .r32{width:152px}.r16{width:145px}.qf{width:138px}.sf{width:130px}.cc{width:144px;flex-shrink:0}
@@ -311,10 +311,27 @@ function render(){
 }
 
 // ── SVG Connectors ──
-function gR(id){const el=document.getElementById('mts_'+id);if(!el)return null;const bw=document.getElementById('bw').getBoundingClientRect();const er=el.getBoundingClientRect();return{l:er.left-bw.left,r:er.right-bw.left,m:(er.top+er.bottom)/2-bw.top}}
+function gR(id){
+  const el=document.getElementById('mts_'+id);if(!el)return null;
+  const bw=document.getElementById('bw');
+  const bwr=bw.getBoundingClientRect();
+  const er=el.getBoundingClientRect();
+  // Divide by CZ to get unscaled coordinates within #bw
+  return{
+    l:(er.left-bwr.left)/CZ,
+    r:(er.right-bwr.left)/CZ,
+    m:((er.top+er.bottom)/2-bwr.top)/CZ
+  };
+}
 function drawSVG(){
-  const svg=document.getElementById('sv'),bw=document.getElementById('bw');if(!svg||!bw)return;
-  svg.setAttribute('viewBox',`0 0 ${bw.offsetWidth} ${bw.offsetHeight}`);svg.innerHTML='';
+  const svg=document.getElementById('sv');
+  const bw=document.getElementById('bw');
+  if(!svg||!bw)return;
+  // Use unscaled dimensions for SVG so paths are correct
+  const W=bw.scrollWidth,H=bw.scrollHeight;
+  svg.setAttribute('width',W);svg.setAttribute('height',H);
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.innerHTML='';
   function p(d,c,dash){const e=document.createElementNS('http://www.w3.org/2000/svg','path');e.setAttribute('d',d);e.setAttribute('stroke',c||'#4472c4');e.setAttribute('stroke-width','2');e.setAttribute('fill','none');e.setAttribute('opacity','.4');if(dash)e.setAttribute('stroke-dasharray',dash);svg.appendChild(e)}
   function cL(id1,id2,rid){const a=gR(id1),b=gR(id2),c=gR(rid);if(!a||!b||!c)return;const mx=(a.r+c.l)/2;p(`M${a.r+1} ${a.m} H${mx} V${b.m} M${a.r+1} ${b.m} H${mx} M${mx} ${a.m} V${c.m} H${c.l-1}`)}
   function cR(id1,id2,rid){const a=gR(id1),b=gR(id2),c=gR(rid);if(!a||!b||!c)return;const mx=(a.l+c.r)/2;p(`M${a.l-1} ${a.m} H${mx} V${b.m} M${a.l-1} ${b.m} H${mx} M${mx} ${a.m} V${c.m} H${c.r+1}`)}
@@ -393,24 +410,22 @@ document.addEventListener('touchend',e=>{if(!tD)return;if(tC){tC.remove();tC=nul
 
 // ── Zoom controls ──
 let CZ=1;
-const BRACKET_W=1360;
+const BRACKET_W=1380;
 function applyZoom(z){
-  CZ=Math.min(3,Math.max(0.1,z));
+  CZ=Math.min(3,Math.max(0.1,+z.toFixed(2)));
   const bw=document.getElementById('bw');
-  const bo=document.querySelector('.bo');
   bw.style.transform=`scale(${CZ})`;
-  bw.style.transformOrigin='top left';
-  // Adjust container height so scroll works correctly
-  bo.style.minHeight=(bw.scrollHeight*CZ+60)+'px';
+  // Expand the .bo container so scrollbars work correctly
+  const bo=document.querySelector('.bo');
+  bo.style.width=(BRACKET_W*CZ+40)+'px';
+  bo.style.height=(bw.scrollHeight*CZ+60)+'px';
   requestAnimationFrame(drawSVG);
 }
-function zIn(){applyZoom(+(CZ+0.1).toFixed(2))}
-function zOut(){applyZoom(+(CZ-0.1).toFixed(2))}
+function zIn(){applyZoom(CZ+0.1)}
+function zOut(){applyZoom(CZ-0.1)}
 function zFit(){
-  // Calculate zoom to fit full bracket width on screen
-  const sw=window.innerWidth||screen.width;
-  const fit=+(sw/BRACKET_W*0.96).toFixed(2);
-  applyZoom(fit);
+  const sw=window.innerWidth-32;
+  applyZoom(sw/BRACKET_W);
 }
 function zReset(){applyZoom(1)}
 
